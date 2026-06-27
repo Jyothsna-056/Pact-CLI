@@ -1,42 +1,71 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: pact
-      POSTGRES_PASSWORD: pact
-      POSTGRES_DB: pact
-    healthcheck:
-      test: ["CMD-SHELL","pg_isready -U pact -d pact"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    volumes:
-      - pact-broker-db:/var/lib/postgresql/data
+name: CI
 
-  broker:
-    image: pactfoundation/pact-broker:2.136.0-pactbroker2.117.1
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "9292:9292"
-    environment:
-      PACT_BROKER_PORT: "9292"
-      PACT_BROKER_BASE_URL: http://127.0.0.1:9292
-      PACT_BROKER_DATABASE_URL: postgres://pact:pact@postgres/pact
-      PACT_BROKER_LOG_LEVEL: INFO
-      PACT_BROKER_SQL_LOG_LEVEL: WARN
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9292/diagnostic/status/heartbeat"]
-      interval: 5s
-      timeout: 5s
-      retries: 24
-      start_period: 10s
+on: [push, pull_request]
 
-volumes:
-  pact-broker-db:
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: 00. Checkout Code
+        uses: actions/checkout@v5
 
+      - name: 0. Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '22'
+          cache: 'maven'
 
+      - name: 0. Install Pact CLI
+        run: |
+          curl -fsSL https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v2.4.5/pact-2.4.5-linux-x86_64.tar.gz | tar xz -C $HOME
+          echo "$HOME/pact/bin" >> $GITHUB_PATH
 
- 
+      - name: 1. Start Pact Broker
+#        working-directory: citesting
+        run: |
+          docker compose -f src/test/java/contract/docker/docker-compose.docker-pact.yml down -v
+          docker compose -f src/test/java/contract/docker/docker-compose.docker-pact.yml up -d --wait
+
+      - name: 2. Run Consumer Tests & Publish Contracts
+#        working-directory: citesting
+        run: |
+          mvn -Dtest=PosOmsConsumerPactTest test
+
+      - name: 3. Consumer Publish Contracts to the Borker
+#        working-directory: citesting
+        run: |
+          pact-broker publish target/pacts \
+            --consumer-app-version=${{ github.sha }} \
+            --branch=main \
+            --broker-base-url=http://127.0.0.1:9292
+
+      - name: 4. Run Provider Verification
+#        working-directory: citesting
+        run: |
+          mvn -Dtest=OmsProviderVerification \
+              -Dgit.sha=${{ github.sha }} \
+              -Dpactbroker.host=127.0.0.1 \
+              -Dpactbroker.port=9292 \
+              test
+
+      - name: 5. Record provider deployment to production
+#        working-directory: citesting
+        run: |
+          pact-broker record-deployment \
+            --pacticipant oms-provider \
+            --version ${{ github.sha }} \
+            --environment production \
+            --broker-base-url http://127.0.0.1:9292
+
+      - name: 6. Can I deploy
+#        working-directory: citesting
+        env:
+          CONTRACT_VERSION: ${{ github.sha }}
+        run: |
+          pact-broker can-i-deploy \
+          --pacticipant pos-consumer \
+          --version $CONTRACT_VERSION \
+          --to-environment production \
+          --broker-base-url http://127.0.0.1:9292
