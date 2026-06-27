@@ -33,12 +33,12 @@ public class OmsProviderVerification {
     @RegisterExtension
     static WireMockExtension wireMock =
             WireMockExtension.newInstance()
-                    .options(wireMockConfig().dynamicPort())
+                    .options(wireMockConfig().port(4010))
                     .build();
 
     @BeforeEach
     void setup(PactVerificationContext context) {
-        context.setTarget(new HttpTestTarget("localhost",wireMock.getPort() ));
+        context.setTarget(new HttpTestTarget("127.0.0.1", 4010));
     }
 
     @TestTemplate
