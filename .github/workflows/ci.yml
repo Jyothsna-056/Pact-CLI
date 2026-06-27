@@ -23,7 +23,7 @@ jobs:
           echo "$HOME/pact/bin" >> $GITHUB_PATH
 
       - name: 1. Start Pact Broker
-        working-directory: citesting
+#        working-directory: citesting
         run: |
           docker compose -f src/test/java/com/ust/tests/contract/docker/Docker_pact.yml down -v
           docker compose -f src/test/java/com/ust/tests/contract/docker/Docker_pact.yml up -d --wait
