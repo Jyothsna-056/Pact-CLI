@@ -2,75 +2,55 @@ package contract.pos;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import org.junit.jupiter.api.BeforeEach;
+
+import java.net.http.HttpClient;
 
 import static io.restassured.RestAssured.given;
 
-public class OmsClient {
+final class OmsClient {
 
-    private final String baseUrl;
 
-    public OmsClient(String baseUrl) {
-        this.baseUrl = baseUrl;
+    private String baseUrl;
+
+    public OmsClient(String baseUrl){
+        this.baseUrl=baseUrl;
     }
 
-    public Order createOrder(Order order) {
+    public Order getOrder(int id) {
 
-        return given()
+        return  given()
+                .baseUri(baseUrl)
+                .contentType(ContentType.JSON)
+                .get("/order/" + id)
+                .then()
+                .statusCode(200)
+                .extract()
+                .as(Order.class);
+    }
+    public Order createOrder(Order order) {
+        return  given()
                 .baseUri(baseUrl)
                 .contentType(ContentType.JSON)
                 .body(order)
-
-                .when()
-                .post("/order")
-
+                .post("/orders/")
                 .then()
                 .statusCode(201)
                 .extract()
                 .as(Order.class);
     }
 
-    public Order getOrder(int orderId) {
-
-        Response response = given()
+    public Response getInventory() {
+        return  given()
                 .baseUri(baseUrl)
-
-                .when()
-                .get("/order/" + orderId);
-
-        response.then().statusCode(200);
-
-        return response.as(Order.class);
-    }
-
-    public record Order(
-            int statuscode,
-            int orderId,
-            String status,
-            double total
-    )
-    { }
-
-
-    public record product(
-            int id,
-            String status
-    )
-    {}
-
-    public product getidOrder(product product)
-    {
-        return given()
-                .baseUri(baseUrl)
-                .contentType(ContentType.JSON)
-                .basePath("/product")
-                .body(product)
-                .when()
-                .get()
+                .get("/inventory/SKU-9")
                 .then()
                 .statusCode(200)
                 .extract()
-                .as(product.class);
-
+                .response();
     }
+
+    public static record Order(int statusCode,int orderId,String status,double total){}
+
 
 }
