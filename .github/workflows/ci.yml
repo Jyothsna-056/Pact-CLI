@@ -47,8 +47,8 @@ jobs:
           mvn -Dtest=OmsProviderVerification \
               -Dgit.sha=${{ github.sha }} \
               -Dpactbroker.host=127.0.0.1 \
-              -Dpact.verifier.publishResults=true \
               -Dpactbroker.port=9292 \
+              -Dpact.verifier.publishResults=true \
               test
 
       - name: 5. Record provider deployment to production

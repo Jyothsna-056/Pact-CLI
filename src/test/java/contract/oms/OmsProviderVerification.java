@@ -21,13 +21,13 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
 @Provider("oms-provider")
-//@PactFolder("target/pacts")
-@PactBroker(
-        url = "http://127.0.0.1:9292",
-        enablePendingPacts = "true",
-        providerTags = "main",
-        includeWipPactsSince = "2026-06-26"
-)
+@PactFolder("target/pacts")
+//@PactBroker(
+//        url = "http://127.0.0.1:9292",
+//        enablePendingPacts = "true",
+//        providerTags = "main",
+//    includeWipPactsSince = "2026-06-26"
+//)
 public class OmsProviderVerification {
 
     @RegisterExtension
@@ -49,61 +49,52 @@ public class OmsProviderVerification {
 
     // --------------------------------------------------
     // GET /order/123
-    // --------------------------------------------------
     @State("Order 123 exists")
-    void order123Exists() {
+    void isOrderExists() {
 
         wireMock.stubFor(get(urlEqualTo("/order/123"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
                         .withBody("""
-                        {
-                          "orderId":123,
-                          "status":"CONFIRMED",
-                          "total":42.0
-                        }
-                        """)));
+{
+"id":123,
+"status":"CONFIRMED",
+"total":42.0
+}
+""")));
     }
 
-    // --------------------------------------------------
-    // POST /orders/
-    // --------------------------------------------------
-    @State("Creating a new order")
-    void creatingNewOrder() {
+    @State("Sku-9 has stock")
+    void hasStock() {
 
-        wireMock.stubFor(post(urlEqualTo("/orders/"))
-                .withHeader("Content-Type",
-                        matching("application/json(;.*)?"))
+        wireMock.stubFor(get(urlEqualTo("/order/7"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+{
+"id":7,
+"status":"Confirmed",
+"total":42.0
+}
+""")));
+    }
+
+    @State("Provider can create orders")
+    void createOrder() {
+
+        wireMock.stubFor(post(urlEqualTo("/order"))
                 .willReturn(aResponse()
                         .withStatus(201)
                         .withHeader("Content-Type", "application/json")
                         .withBody("""
-                        {
-                          "statusCode":201,
-                          "orderId":101,
-                          "status":"CREATED",
-                          "total":2000
-                        }
-                        """)));
-    }
-
-    // --------------------------------------------------
-    // GET /inventory/SKU-9
-    // --------------------------------------------------
-    @State("SKU-9 has Stock")
-    void sku9HasStock() {
-
-        wireMock.stubFor(get(urlEqualTo("/inventory/SKU-9"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type",
-                                "application/json; charset=UTF-8")
-                        .withBody("""
-                        {
-                          "sku":"SKU-9",
-                          "qty":5
-                        }
-                        """)));
+{
+"statusCode":201,
+"orderId":123,
+"status":"CREATED",
+"total":42.0
+}
+""")));
     }
 }

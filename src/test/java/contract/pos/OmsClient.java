@@ -2,55 +2,60 @@ package contract.pos;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import org.junit.jupiter.api.BeforeEach;
-
-import java.net.http.HttpClient;
 
 import static io.restassured.RestAssured.given;
 
-final class OmsClient {
+public class OmsClient {
 
+    private final String baseUrl;
 
-    private String baseUrl;
-
-    public OmsClient(String baseUrl){
-        this.baseUrl=baseUrl;
+    public OmsClient(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
-    public Order getOrder(int id) {
+    public CreateOrderResponse createOrder(CreateOrderRequest order) {
 
-        return  given()
-                .baseUri(baseUrl)
-                .contentType(ContentType.JSON)
-                .get("/order/" + id)
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(Order.class);
-    }
-    public Order createOrder(Order order) {
-        return  given()
+        return given()
                 .baseUri(baseUrl)
                 .contentType(ContentType.JSON)
                 .body(order)
-                .post("/orders/")
+                .when()
+                .post("/order")
                 .then()
                 .statusCode(201)
                 .extract()
-                .as(Order.class);
+                .as(CreateOrderResponse.class);
     }
 
-    public Response getInventory() {
-        return  given()
+    public Order getOrder(int orderId) {
+
+        Response response = given()
                 .baseUri(baseUrl)
-                .get("/inventory/SKU-9")
-                .then()
-                .statusCode(200)
-                .extract()
-                .response();
+                .when()
+                .get("/order/" + orderId);
+
+        response.then().statusCode(200);
+
+        return response.as(Order.class);
     }
 
-    public static record Order(int statusCode,int orderId,String status,double total){}
+    public record Order(
+            int id,
+            String status,
+            double total
+    ) {}
 
+    public record CreateOrderRequest(
+            int statusCode,
+            int orderId,
+            String status,
+            double total
+    ) {}
 
+    public record CreateOrderResponse(
+            int statusCode,
+            int orderId,
+            String status,
+            double total
+    ) {}
 }
